@@ -1,7 +1,7 @@
 mod utils;
 use crate::utils::rotate_about;
 use bevy::prelude::*;
-use bevy_cable::{Cable, CableNode, CablePlugin, Constraint};
+use bevy_cable::{Cable, CableHead, CableNode, CablePlugin, Constraint, Velocity};
 
 fn main() {
     App::new()
@@ -51,12 +51,11 @@ fn setup(mut commands: Commands) {
         .map(|i| {
             let transform = Transform::from_translation(rotate_about(
                 Vec3::ZERO,
-                Vec3::new(45.0, 45.0, 0.0),
+                Vec3::new(SPRITE_SIZE / 2.0, SPRITE_SIZE / 2.0, 0.0),
                 f32::to_radians(45.0 * i as f32),
             ));
             let head = commands
                 .spawn()
-                .insert(Arm)
                 .insert_bundle(SpriteBundle {
                     sprite: Sprite {
                         color: arm_colors[i],
@@ -66,12 +65,20 @@ fn setup(mut commands: Commands) {
                     transform,
                     ..Default::default()
                 })
+                .insert_bundle((
+                    Arm,
+                    CableHead,
+                    Cable,
+                    Velocity {
+                        translation: Vec3::ZERO,
+                    },
+                ))
                 .id();
             commands.entity(head).with_children(|parent| {
                 let mut prev_id = head;
-                for i in 1..5 {
+                for j in 0..5 {
                     let child_transform =
-                        Transform::from_translation(transform.translation * i as f32);
+                        Transform::from_translation(transform.translation * j as f32);
                     let id = parent
                         .spawn_bundle(SpriteBundle {
                             sprite: Sprite {
@@ -87,12 +94,15 @@ fn setup(mut commands: Commands) {
                                 previous_position: child_transform.translation,
                             },
                             Cable,
+                            Velocity {
+                                translation: child_transform.translation.normalize() * 20.0,
+                            },
                         ))
                         .id();
                     parent.spawn().insert(Constraint {
                         node_1: prev_id,
                         node_2: id,
-                        desired_distance: SPRITE_SIZE,
+                        desired_distance: ARM_WIDTH,
                     });
                     prev_id = id;
                 }
